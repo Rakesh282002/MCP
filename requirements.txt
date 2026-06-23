@@ -1,0 +1,7 @@
+# Required packages
+mcp
+httpx
+google-genai
+python-dotenv
+streamlit
+beautifulsoup4

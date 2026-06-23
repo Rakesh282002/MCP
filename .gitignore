@@ -1,0 +1,32 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+*.egg
+.Python
+
+# Virtual Environments
+venv/
+env/
+.venv
+
+# Environment Variables & Secrets
+.env
+.env.local
+
+# IDE
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Project-specific
+uploads/
+vector_store/
+logs/
+*.log
+
+# Streamlit
+.streamlit/
