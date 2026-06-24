@@ -14,10 +14,15 @@ Run: streamlit run step3_streamlit_app.py
 
 import asyncio
 import os
+import subprocess
 import streamlit as st
 from dotenv import load_dotenv
 import sys
+import time
 import traceback
+from pathlib import Path
+
+import httpx
 
 from google import genai
 from google.genai import types
@@ -34,6 +39,66 @@ load_dotenv()
 MCP_SERVER_URL = "http://localhost:8080/sse"
 GEMINI_API_KEY = os.getenv("GOOGLE_API_KEY", "YOUR_API_KEY_HERE")
 MODEL = "gemini-3.1-flash-lite"
+
+
+# ---------------------------------------------------------------------------
+# Bootstrap: ensure MCP server is available (for Streamlit deployment)
+# ---------------------------------------------------------------------------
+
+@st.cache_resource
+def ensure_mcp_server() -> dict:
+    """Start local MCP server if not already running."""
+    base_url = MCP_SERVER_URL.rsplit("/", 1)[0]
+
+    try:
+        httpx.get(base_url, timeout=1.5)
+        return {"status": "running", "started_here": False, "message": "MCP server already running."}
+    except Exception:
+        pass
+
+    server_file = Path(__file__).resolve().parent / "step1_mcp_server.py"
+    if not server_file.exists():
+        return {
+            "status": "error",
+            "started_here": False,
+            "message": f"Missing server file: {server_file}",
+        }
+
+    creation_flags = 0
+    if os.name == "nt":
+        creation_flags = subprocess.CREATE_NO_WINDOW
+
+    try:
+        subprocess.Popen(
+            [sys.executable, str(server_file)],
+            cwd=str(server_file.parent),
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+            creationflags=creation_flags,
+        )
+    except Exception as e:
+        return {
+            "status": "error",
+            "started_here": False,
+            "message": f"Failed to start MCP server: {e}",
+        }
+
+    for _ in range(20):
+        try:
+            httpx.get(base_url, timeout=1.0)
+            return {
+                "status": "running",
+                "started_here": True,
+                "message": "MCP server started by Streamlit app.",
+            }
+        except Exception:
+            time.sleep(0.25)
+
+    return {
+        "status": "error",
+        "started_here": True,
+        "message": f"MCP server did not become ready at {base_url}",
+    }
 
 
 # ---------------------------------------------------------------------------
@@ -198,6 +263,11 @@ st.set_page_config(page_title="AI Search & Weather Agent", page_icon="🔍", lay
 st.title("🔍 AI Agent — Web Search & Weather (MCP-Powered)")
 st.caption("Ask anything — the AI decides whether to search the web, check weather, or answer directly.")
 
+mcp_bootstrap = ensure_mcp_server()
+if mcp_bootstrap["status"] != "running":
+    st.error(f"MCP bootstrap failed: {mcp_bootstrap['message']}")
+    st.stop()
+
 # Chat history
 if "messages" not in st.session_state:
     st.session_state.messages = []
@@ -254,15 +324,13 @@ if prompt := st.chat_input("Ask anything — search the web, check weather..."):
 with st.sidebar:
     st.header("Available MCP Tools")
     
-    # Status check
-    st.markdown("### ⚠️ Prerequisites")
-    st.markdown(f"""
-    **MCP Server Status:** Make sure to run the MCP server first!
-    ```bash
-    python step1_mcp_server.py
-    ```
-    The server should be running at: `{MCP_SERVER_URL}`
-    """)
+    st.markdown("### MCP Status")
+    if mcp_bootstrap["started_here"]:
+        st.success("MCP server auto-started by this app.")
+    else:
+        st.success("MCP server is already running.")
+
+    st.caption(f"Endpoint: {MCP_SERVER_URL}")
     
     st.divider()
     
