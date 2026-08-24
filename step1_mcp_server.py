@@ -5,10 +5,12 @@ Run: python step1_mcp_server.py
 Dependencies: pip install mcp httpx beautifulsoup4
 """
 
+import os
 import httpx
 from mcp.server.fastmcp import FastMCP
 
-mcp = FastMCP("Search & Weather", host="0.0.0.0", port=8080)
+MCP_PORT = int(os.environ.get("MCP_PORT", 8080))
+mcp = FastMCP("Search & Weather", host="0.0.0.0", port=MCP_PORT)
 
 
 # ---------------------------------------------------------------------------
@@ -156,7 +158,7 @@ def _weather_code_to_text(code: int) -> str:
 # ---------------------------------------------------------------------------
 if __name__ == "__main__":
     print("=" * 60)
-    print("  MCP Server — http://0.0.0.0:8080")
+    print(f"  MCP Server — http://0.0.0.0:{MCP_PORT}")
     print("  Tools: web_search, weather_forecast")
     print("=" * 60)
     mcp.run(transport="sse")

@@ -36,7 +36,8 @@ load_dotenv()
 # Configuration
 # ---------------------------------------------------------------------------
 
-MCP_SERVER_URL = "http://localhost:8080/sse"
+MCP_PORT = os.getenv("MCP_PORT", "8080")
+MCP_SERVER_URL = f"http://localhost:{MCP_PORT}/sse"
 GEMINI_API_KEY = os.getenv("GOOGLE_API_KEY", "YOUR_API_KEY_HERE")
 MODEL = "gemini-3.1-flash-lite"
 
@@ -51,7 +52,7 @@ def ensure_mcp_server() -> dict:
     base_url = MCP_SERVER_URL.rsplit("/", 1)[0]
 
     try:
-        httpx.get(base_url, timeout=1.5)
+        httpx.get(base_url, timeout=2.0)
         return {"status": "running", "started_here": False, "message": "MCP server already running."}
     except Exception:
         pass
@@ -64,17 +65,23 @@ def ensure_mcp_server() -> dict:
             "message": f"Missing server file: {server_file}",
         }
 
-    creation_flags = 0
+    # Capture stderr to diagnose startup failures
+    log_file = Path(__file__).resolve().parent / "mcp_server.log"
+
+    popen_kwargs = {
+        "cwd": str(server_file.parent),
+        "stdout": open(log_file, "w"),
+        "stderr": subprocess.STDOUT,
+    }
+
+    # Windows-specific: hide console window
     if os.name == "nt":
-        creation_flags = subprocess.CREATE_NO_WINDOW
+        popen_kwargs["creationflags"] = subprocess.CREATE_NO_WINDOW
 
     try:
-        subprocess.Popen(
+        process = subprocess.Popen(
             [sys.executable, str(server_file)],
-            cwd=str(server_file.parent),
-            stdout=subprocess.DEVNULL,
-            stderr=subprocess.DEVNULL,
-            creationflags=creation_flags,
+            **popen_kwargs,
         )
     except Exception as e:
         return {
@@ -83,7 +90,16 @@ def ensure_mcp_server() -> dict:
             "message": f"Failed to start MCP server: {e}",
         }
 
-    for _ in range(20):
+    # Wait up to 10 seconds for server to become ready
+    for _ in range(40):
+        # Check if process crashed immediately
+        if process.poll() is not None:
+            error_log = log_file.read_text() if log_file.exists() else "No log output"
+            return {
+                "status": "error",
+                "started_here": True,
+                "message": f"MCP server process exited with code {process.returncode}.\nLog:\n{error_log}",
+            }
         try:
             httpx.get(base_url, timeout=1.0)
             return {
@@ -94,10 +110,12 @@ def ensure_mcp_server() -> dict:
         except Exception:
             time.sleep(0.25)
 
+    # Timed out — read log for diagnostics
+    error_log = log_file.read_text() if log_file.exists() else "No log output"
     return {
         "status": "error",
         "started_here": True,
-        "message": f"MCP server did not become ready at {base_url}",
+        "message": f"MCP server did not become ready at {base_url}.\nServer log:\n{error_log}",
     }
 
 
