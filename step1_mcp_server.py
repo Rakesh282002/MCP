@@ -5,6 +5,14 @@ Run: python step1_mcp_server.py
 Dependencies: pip install mcp httpx beautifulsoup4
 """
 
+import sys
+from pathlib import Path
+
+# Fix: prevent repo folder name "mcp" from shadowing the installed mcp package
+_repo_parent = str(Path(__file__).resolve().parent.parent)
+if _repo_parent in sys.path:
+    sys.path.remove(_repo_parent)
+
 import os
 import httpx
 from mcp.server.fastmcp import FastMCP

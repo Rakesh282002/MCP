@@ -12,15 +12,21 @@ Run: streamlit run step3_streamlit_app.py
      (Make sure step1_mcp_server.py is running first!)
 """
 
+import sys
+from pathlib import Path
+
+# Fix: prevent repo folder name "mcp" from shadowing the installed mcp package
+_repo_parent = str(Path(__file__).resolve().parent.parent)
+if _repo_parent in sys.path:
+    sys.path.remove(_repo_parent)
+
 import asyncio
 import os
 import subprocess
 import streamlit as st
 from dotenv import load_dotenv
-import sys
 import time
 import traceback
-from pathlib import Path
 
 import httpx
 
