@@ -23,10 +23,10 @@ Run: python step2_agent_client.py
 import sys
 from pathlib import Path
 
-# Fix: prevent repo folder name "mcp" from shadowing the installed mcp package
-_repo_parent = str(Path(__file__).resolve().parent.parent)
-if _repo_parent in sys.path:
-    sys.path.remove(_repo_parent)
+# Fix: repo folder is named "mcp" which shadows the installed mcp package.
+_this_dir = str(Path(__file__).resolve().parent)
+sys.path = [p for p in sys.path if str(Path(p).resolve()) != _this_dir
+            and str(Path(p, "mcp").resolve()) != _this_dir]
 
 import asyncio
 import json

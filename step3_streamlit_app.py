@@ -15,10 +15,10 @@ Run: streamlit run step3_streamlit_app.py
 import sys
 from pathlib import Path
 
-# Fix: prevent repo folder name "mcp" from shadowing the installed mcp package
-_repo_parent = str(Path(__file__).resolve().parent.parent)
-if _repo_parent in sys.path:
-    sys.path.remove(_repo_parent)
+# Fix: repo folder is named "mcp" which shadows the installed mcp package.
+_this_dir = str(Path(__file__).resolve().parent)
+sys.path = [p for p in sys.path if str(Path(p).resolve()) != _this_dir
+            and str(Path(p, "mcp").resolve()) != _this_dir]
 
 import asyncio
 import os
@@ -74,10 +74,15 @@ def ensure_mcp_server() -> dict:
     # Capture stderr to diagnose startup failures
     log_file = Path(__file__).resolve().parent / "mcp_server.log"
 
+    # Build clean env: remove PYTHONPATH to prevent repo dir shadowing 'mcp' package
+    clean_env = os.environ.copy()
+    clean_env.pop("PYTHONPATH", None)
+
     popen_kwargs = {
         "cwd": str(server_file.parent),
         "stdout": open(log_file, "w"),
         "stderr": subprocess.STDOUT,
+        "env": clean_env,
     }
 
     # Windows-specific: hide console window
