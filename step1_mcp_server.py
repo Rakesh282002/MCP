@@ -6,13 +6,31 @@ Dependencies: pip install mcp httpx beautifulsoup4
 """
 
 import sys
+import site
 from pathlib import Path
 
-# Fix: repo folder is named "mcp" which shadows the installed mcp package.
-# Remove ANY sys.path entry whose child "mcp/" is this repo (not the real package).
+# === Fix: repo folder "mcp" shadows the installed mcp package ===
+# Strategy: temporarily nuke sys.path, import mcp from site-packages, then restore.
 _this_dir = str(Path(__file__).resolve().parent)
-sys.path = [p for p in sys.path if str(Path(p).resolve()) != _this_dir
-            and str(Path(p, "mcp").resolve()) != _this_dir]
+
+# 1. Remove conflicting paths
+_original_path = sys.path[:]
+sys.path = [p for p in sys.path
+            if str(Path(p).resolve()) != _this_dir
+            and str(Path(p, "mcp").resolve()) != _this_dir
+            and p != ""]
+
+# 2. Ensure site-packages are present
+for sp in site.getsitepackages():
+    if sp not in sys.path:
+        sys.path.insert(0, sp)
+try:
+    user_sp = site.getusersitepackages()
+    if user_sp not in sys.path:
+        sys.path.insert(0, user_sp)
+except Exception:
+    pass
+# === End fix ===
 
 import os
 import httpx

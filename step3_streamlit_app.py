@@ -13,12 +13,19 @@ Run: streamlit run step3_streamlit_app.py
 """
 
 import sys
+import site
 from pathlib import Path
 
-# Fix: repo folder is named "mcp" which shadows the installed mcp package.
+# === Fix: repo folder "mcp" shadows the installed mcp package ===
 _this_dir = str(Path(__file__).resolve().parent)
-sys.path = [p for p in sys.path if str(Path(p).resolve()) != _this_dir
-            and str(Path(p, "mcp").resolve()) != _this_dir]
+sys.path = [p for p in sys.path
+            if str(Path(p).resolve()) != _this_dir
+            and str(Path(p, "mcp").resolve()) != _this_dir
+            and p != ""]
+for _sp in site.getsitepackages():
+    if _sp not in sys.path:
+        sys.path.insert(0, _sp)
+# === End fix ===
 
 import asyncio
 import os

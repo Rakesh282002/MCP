@@ -1,7 +1,13 @@
 # Required packages
 mcp>=1.0.0
 httpx
+httpx-sse
 google-genai
 python-dotenv
 streamlit
 beautifulsoup4
+pydantic
+anyio
+starlette
+sse-starlette
+uvicorn
