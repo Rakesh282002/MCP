@@ -10,7 +10,7 @@ import httpx
 from fastmcp import FastMCP
 
 MCP_PORT = int(os.environ.get("MCP_PORT", 8080))
-mcp = FastMCP("Search & Weather", host="0.0.0.0", port=MCP_PORT)
+mcp = FastMCP("Search & Weather")
 
 
 # ---------------------------------------------------------------------------
@@ -161,4 +161,4 @@ if __name__ == "__main__":
     print(f"  MCP Server — http://0.0.0.0:{MCP_PORT}")
     print("  Tools: web_search, weather_forecast")
     print("=" * 60)
-    mcp.run(transport="sse")
+    mcp.run(transport="sse", host="0.0.0.0", port=MCP_PORT)
