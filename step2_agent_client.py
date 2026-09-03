@@ -75,14 +75,19 @@ def mcp_tools_to_gemini_declarations(mcp_tools) -> list:
         properties = {}
         required = []
 
-        if tool.inputSchema and "properties" in tool.inputSchema:
-            for param_name, param_info in tool.inputSchema["properties"].items():
+        # MCP SDK versions differ: some expose input_schema, older ones inputSchema
+        schema = getattr(tool, "input_schema", None) or getattr(tool, "inputSchema", None)
+        if hasattr(schema, "model_dump"):
+            schema = schema.model_dump()
+
+        if isinstance(schema, dict) and "properties" in schema:
+            for param_name, param_info in schema["properties"].items():
                 properties[param_name] = {
                     "type": param_info.get("type", "string").upper(),
                     "description": param_info.get("description", ""),
                 }
 
-            required = tool.inputSchema.get("required", [])
+            required = schema.get("required", [])
 
         declaration = types.FunctionDeclaration(
             name=tool.name,
@@ -124,7 +129,9 @@ async def ask_agent(question: str) -> str:
 
             print(f"\n[Agent] Discovered {len(mcp_tools)} tools from MCP server:")
             for t in mcp_tools:
-                print(f"  - {t.name}: {t.description[:50]}...")
+                desc = (t.description or "").strip()
+                preview = f"{desc[:50]}..." if desc else "No description"
+                print(f"  - {t.name}: {preview}")
 
             # --- 2. Convert MCP tools to Gemini function declarations ---
             gemini_declarations = mcp_tools_to_gemini_declarations(mcp_tools)

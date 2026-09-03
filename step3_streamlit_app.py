@@ -146,13 +146,19 @@ def mcp_tools_to_gemini_declarations(mcp_tools) -> list:
     for tool in mcp_tools:
         properties = {}
         required = []
-        if tool.inputSchema and "properties" in tool.inputSchema:
-            for param_name, param_info in tool.inputSchema["properties"].items():
+
+        # MCP SDK versions differ: some expose input_schema, older ones inputSchema
+        schema = getattr(tool, "input_schema", None) or getattr(tool, "inputSchema", None)
+        if hasattr(schema, "model_dump"):
+            schema = schema.model_dump()
+
+        if isinstance(schema, dict) and "properties" in schema:
+            for param_name, param_info in schema["properties"].items():
                 properties[param_name] = {
                     "type": param_info.get("type", "string").upper(),
                     "description": param_info.get("description", ""),
                 }
-            required = tool.inputSchema.get("required", [])
+            required = schema.get("required", [])
 
         declaration = types.FunctionDeclaration(
             name=tool.name,
